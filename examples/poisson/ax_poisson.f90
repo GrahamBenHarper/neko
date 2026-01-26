@@ -33,11 +33,11 @@
 module ax_poisson
   use ax_product
   use utils, only : neko_error
-  use num_types, only : rp
+  use num_types, only : rp, i8
   use coefs, only : coef_t
   use space, only : space_t
   use mesh, only : mesh_t
-  use math, only : addcol4
+  use math, only : addcol4, glsum
   implicit none
   private
 
@@ -63,7 +63,7 @@ contains
     real(kind=rp) :: wus(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: wut(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: tmp
-    integer :: e, i, j, k, l
+    integer :: e, i, j, k, l, num_dofs
 
     ! @todo don't assume lx = ly = lz
     ! build a matrix
@@ -89,10 +89,26 @@ contains
          write(*,*) size(Dt)
          write(*,*) size(G11)
          ! write(*,*) G11
-         write(*,*) 'Number of DOFs'
+         write(*,*) 'Number of elements'
+         write(*,*) n
+         write(*,*) 'Number of local DOFs'
+         write(*,*) lx
          write(*,*) coef%dof%size()
+         ! write(*,*) coef%dof%dof
          write(*,*) 'Allocating matrix meow meow ^-^'
-         allocate(A_matrix(coef%dof%size(),coef%dof%size()))
+         num_dofs = int(glsum(coef%mult, coef%dof%size()), i8)
+         allocate(A_matrix(num_dofs,num_dofs))
+         write(*,*) num_dofs
+
+         do e = 1, n
+            do k = 1, lx
+               do j = 1, lx
+                  do i = 1, lx
+                     A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,k,e)) = 1.0_rp
+                  end do
+               end do
+            end do
+         end do
       endif
 
       ! Loop over mesh elements
@@ -196,6 +212,17 @@ contains
 
       end do
     end associate
+
+    do e = 1, n
+       do k = 1, lx
+          do j = 1, lx
+             do i = 1, lx
+                w(i,j,k,e) = A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,k,e)) * w(i,j,k,e)
+             end do
+          end do
+       end do
+    end do
+
   end subroutine ax_poisson_compute
 
   subroutine ax_poisson_compute_vector(this, au, av, aw, u, v, w, coef, msh, Xh)
