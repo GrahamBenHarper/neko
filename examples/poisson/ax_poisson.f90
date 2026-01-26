@@ -232,8 +232,8 @@ contains
          do i = 1, lx
             do j = 1, lx
                do k = 1, lx
-                  u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e) !* coef%mult(i,j,k,e)
-                  w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e) !* coef%mult(i,j,k,e)
+                  u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e) * coef%mult(i,j,k,e)
+                  w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e) * coef%mult(i,j,k,e)
                end do
             end do
          end do
@@ -244,9 +244,7 @@ contains
          do icol = 1, num_dofs
             w_vec(irow) = w_vec(irow) + A_matrix(irow,icol) * u_vec(icol)
          end do
-         w_vec(irow) = w_vec(irow) - u_vec(irow)
       end do
-      write(*,*) w_vec
 
     end associate
   end subroutine ax_poisson_compute
