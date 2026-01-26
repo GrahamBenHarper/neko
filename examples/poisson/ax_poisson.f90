@@ -63,7 +63,8 @@ contains
     real(kind=rp) :: wus(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: wut(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: tmp
-    integer :: e, i, j, k, l, num_dofs
+    real(kind=rp), allocatable :: u_vec(:), w_vec(:)
+    integer :: e, i, j, k, l, num_dofs, irow, icol
 
     ! @todo don't assume lx = ly = lz
     ! build a matrix
@@ -80,6 +81,9 @@ contains
       ! This is the matrix-based implementation of a matrix-free operator
       ! On the first call, it builds the matrix before computing the matvec
       ! On subsequent calls, it only computes the matvec using that matrix
+      ! Dt G11 G12 G13 D = Dt * G11 * D + Dt * G12 * D + Dt * G13 * D
+      ! Dt G21 G22 G23 D = Dt * G21 * D + Dt * G22 * D + Dt * G23 * D
+      ! Dt G31 G32 G33 D = Dt * G31 * D + Dt * G32 * D + Dt * G33 * D
       if (.not. allocated(A_matrix)) then
          write(*,*)
          write(*,*) '------------------------------'
@@ -110,6 +114,10 @@ contains
             end do
          end do
       endif
+
+      allocate(u_vec(num_dofs))
+      allocate(w_vec(num_dofs))
+
 
       ! Loop over mesh elements
       do e = 1, n
@@ -210,19 +218,28 @@ contains
             end do
          end do
 
+      end do ! e = 1, n
+
+      ! Turn u and w into true vectors instead of the previous abominations
+      do e = 1, n
+         do i = 1, lx
+            do j = 1, lx
+               do k = 1, lx
+                  u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e)
+                  w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e)
+               end do
+            end do
+         end do
       end do
+
+      ! Do the true matrix-vector multiplication
+      do irow = 1, num_dofs
+         do icol = 1, num_dofs
+            w_vec(irow) = w_vec(irow) + A_matrix(irow,icol) * u_vec(icol)
+         end do
+      end do
+
     end associate
-
-    do e = 1, n
-       do k = 1, lx
-          do j = 1, lx
-             do i = 1, lx
-                w(i,j,k,e) = A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,k,e)) * w(i,j,k,e)
-             end do
-          end do
-       end do
-    end do
-
   end subroutine ax_poisson_compute
 
   subroutine ax_poisson_compute_vector(this, au, av, aw, u, v, w, coef, msh, Xh)
