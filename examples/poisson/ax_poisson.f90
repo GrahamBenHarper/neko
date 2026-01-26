@@ -104,19 +104,26 @@ contains
          allocate(A_matrix(num_dofs,num_dofs))
          write(*,*) num_dofs
 
-         do e = 1, n
-            do k = 1, lx
-               do j = 1, lx
-                  do i = 1, lx
-                     A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,k,e)) = 1.0_rp
-                  end do
-               end do
-            end do
+         A_matrix = 0.0_rp
+
+         !do e = 1, n
+         !   do k = 1, lx
+         !      do j = 1, lx
+         !         do i = 1, lx
+         !            A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,k,e)) = 1.0_rp
+         !         end do
+         !      end do
+         !   end do
+         !end do
+         do irow = 1, num_dofs
+            A_matrix(irow,irow) = 1.0_rp
          end do
       endif
 
       allocate(u_vec(num_dofs))
       allocate(w_vec(num_dofs))
+      u_vec = 0.0_rp
+      w_vec = 0.0_rp
 
 
       ! Loop over mesh elements
@@ -225,8 +232,8 @@ contains
          do i = 1, lx
             do j = 1, lx
                do k = 1, lx
-                  u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e)
-                  w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e)
+                  u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e) !* coef%mult(i,j,k,e)
+                  w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e) !* coef%mult(i,j,k,e)
                end do
             end do
          end do
@@ -237,7 +244,9 @@ contains
          do icol = 1, num_dofs
             w_vec(irow) = w_vec(irow) + A_matrix(irow,icol) * u_vec(icol)
          end do
+         w_vec(irow) = w_vec(irow) - u_vec(irow)
       end do
+      write(*,*) w_vec
 
     end associate
   end subroutine ax_poisson_compute
