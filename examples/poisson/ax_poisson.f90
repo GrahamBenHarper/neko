@@ -50,9 +50,6 @@ module ax_poisson
 
 contains
 
-  ! This is the matrix-based implementation of a matrix-free operator
-  ! On the first call, it builds the matrix before computing the matvec
-  ! On subsequent calls, it only computes the matvec
   subroutine ax_poisson_compute(w, u, coef, msh, Xh)
     type(mesh_t), intent(in) :: msh
     type(space_t), intent(in) :: Xh
@@ -79,6 +76,24 @@ contains
          G11 => coef%G11, G22 => coef%G22, G33 => coef%G33, &
          G12 => coef%G12, G13 => coef%G13, G23 => coef%G23, &
          n => msh%nelv, lx => Xh%lx)
+
+      ! This is the matrix-based implementation of a matrix-free operator
+      ! On the first call, it builds the matrix before computing the matvec
+      ! On subsequent calls, it only computes the matvec using that matrix
+      if (.not. allocated(A_matrix)) then
+         write(*,*)
+         write(*,*) '------------------------------'
+         write(*,*) 'WARNING: THIS MAKES ASSUMPTIONS ABOUT RECTILINEAR GRIDS'
+         write(*,*) 'Size for matrices D, Dt, G11:'
+         write(*,*) size(D)
+         write(*,*) size(Dt)
+         write(*,*) size(G11)
+         ! write(*,*) G11
+         write(*,*) 'Number of DOFs'
+         write(*,*) coef%dof%size()
+         write(*,*) 'Allocating matrix meow meow ^-^'
+         allocate(A_matrix(coef%dof%size(),coef%dof%size()))
+      endif
 
       ! Loop over mesh elements
       do e = 1, n
