@@ -87,7 +87,6 @@ contains
       if (.not. allocated(A_matrix)) then
          write(*,*)
          write(*,*) '------------------------------'
-         write(*,*) 'WARNING: THIS MAKES ASSUMPTIONS ABOUT RECTILINEAR GRIDS'
          write(*,*) 'Size for matrices D, Dt, G11:'
          write(*,*) size(D)
          write(*,*) size(Dt)
@@ -104,8 +103,6 @@ contains
          allocate(A_matrix(num_dofs,num_dofs))
          write(*,*) num_dofs
 
-         A_matrix = 0.0_rp
-
          !do e = 1, n
          !   do k = 1, lx
          !      do j = 1, lx
@@ -115,11 +112,12 @@ contains
          !      end do
          !   end do
          !end do
-         do irow = 1, num_dofs
-            A_matrix(irow,irow) = 1.0_rp
-         end do
+         !do irow = 1, num_dofs
+         !   A_matrix(irow,irow) = 1.0_rp
+         !end do
       endif
 
+      A_matrix = 0.0_rp
       allocate(u_vec(num_dofs))
       allocate(w_vec(num_dofs))
       u_vec = 0.0_rp
@@ -128,6 +126,7 @@ contains
 
       ! Loop over mesh elements
       do e = 1, n
+         write(*,*) 'Loop index ', e
          ! Compute the action of the derivative operator (D u)
          ! (D_xi u)
          do k = 1, lx
@@ -135,6 +134,7 @@ contains
                do i = 1, lx
                   tmp = 0.0_rp
                   do l = 1, lx
+                  ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(l,j,k,e)) = D(i,l) ! TODO: this looks right
                      tmp = tmp + D(i,l) * u(l,j,k,e)
                   end do
                   wur(i,j,k) = tmp
@@ -148,6 +148,7 @@ contains
                do i = 1, lx
                   tmp = 0.0_rp
                   do l = 1, lx
+                     ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,l,k,e)) = D(j,l) ! TODO: this looks right
                      tmp = tmp + D(j,l) * u(i,l,k,e)
                   end do
                   wus(i,j,k) = tmp
@@ -161,6 +162,7 @@ contains
                do i = 1, lx
                   tmp = 0.0_rp
                   do l = 1, lx
+                     ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,l,e)) = D(k,l) ! TODO: this looks right
                      tmp = tmp + D(k,l) * u(i,j,l,e)
                   end do
                   wut(i,j,k) = tmp
@@ -228,6 +230,7 @@ contains
       end do ! e = 1, n
 
       ! Turn u and w into true vectors instead of the previous abominations
+      write(*,*) 'Vectors'
       do e = 1, n
          do i = 1, lx
             do j = 1, lx
@@ -240,6 +243,7 @@ contains
       end do
 
       ! Do the true matrix-vector multiplication
+      write(*,*) 'Matvec'
       do irow = 1, num_dofs
          do icol = 1, num_dofs
             w_vec(irow) = w_vec(irow) + A_matrix(irow,icol) * u_vec(icol)
