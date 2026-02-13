@@ -74,12 +74,6 @@ contains
     integer :: e, i, j, k, l, num_dofs, irow, icol, idof, nnz
 
     ! @todo don't assume lx = ly = lz
-    ! build a matrix
-    if (.not. allocated(A_matrix)) then
-       write(*,*) 'Allocating matrix meow meow ^-^'
-       allocate(A_matrix(coef%dof%size(),coef%dof%size()))
-    endif    
-    
     associate( D => Xh%dx, Dt => Xh%dxt, &
          G11 => coef%G11, G22 => coef%G22, G33 => coef%G33, &
          G12 => coef%G12, G13 => coef%G13, G23 => coef%G23, &
@@ -96,29 +90,26 @@ contains
          write(*,*) size(Dt)
          write(*,*) size(G11)
          ! write(*,*) G11
-         write(*,*) 'Number of elements'
-         write(*,*) n
-         write(*,*) 'Number of local DOFs'
-         write(*,*) lx
-         write(*,*) 'DOF Size'
-         write(*,*) coef%dof%size()
+         write(*,*) 'Number of elements ', n
+         write(*,*) 'Number of local DOFs ', lx
+         write(*,*) 'DOF size ', coef%dof%size()
          ! write(*,*) coef%dof%dof
          write(*,*) 'Allocating matrix meow meow ^-^'
          ! true number of dofs (number of rows/cols in A)
          num_dofs = int(glsum(coef%mult, coef%dof%size()), i8)
-         ! allocate(A_matrix(num_dofs,num_dofs))
+         allocate(A_matrix(1,1))
 
 
 
          ! storing the matrix in (i,j,val) format needs one entry per dof contribution
          ! this means we will need elems
-         nnz = num_dofs*lx*lx*lx
+         nnz = n*lx*lx*lx*lx*3
          write(*,*) 'nnz'
          write(*,*) nnz
-         allocate(A_vals(num_dofs))
+         allocate(A_vals(nnz))
          A_vals = 0.0_rp
-         allocate(A_rows(num_dofs))
-         allocate(A_cols(num_dofs))
+         allocate(A_rows(nnz))
+         allocate(A_cols(nnz))
          A_rows = 0_i8
          A_cols = 0_i8
          idof = 1 ! fortran indexing
@@ -130,6 +121,7 @@ contains
       ! allocate(w_vec(num_dofs))
       ! u_vec = 0.0_rp
       ! w_vec = 0.0_rp
+      idof = 1
 
 
       ! Loop over mesh elements
@@ -142,70 +134,56 @@ contains
                do i = 1, lx
                   tmp = 0.0_rp
                   do l = 1, lx
-                     ! A_vals(idof) = D(i,l)
-                     ! A_rows(idof) = coef%dof%dof(i,j,k,e)
-                     ! A_cols(idof) = coef%dof%dof(l,j,k,e)
-                     ! idof = idof + 1
+                     A_vals(idof) = G11(i,j,k,e) * D(i,l)
+                     A_rows(idof) = coef%dof%dof(i,j,k,e)
+                     A_cols(idof) = coef%dof%dof(l,j,k,e)
+                     idof = idof + 1
                      ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(l,j,k,e)) = D(i,l) ! TODO: this looks right
                      tmp = tmp + D(i,l) * u(l,j,k,e)
                   end do
-                  wur(i,j,k) = tmp
-               end do
-            end do
-         end do
-
-         ! (D_eta u)
-         do k = 1, lx
-            do j = 1, lx
-               do i = 1, lx
+                  ur(i,j,k) = G11(i,j,k,e) * tmp
+                  
                   tmp = 0.0_rp
                   do l = 1, lx
-                     ! A_vals(idof) = D(j,l)
-                     ! A_rows(idof) = coef%dof%dof(i,j,k,e)
-                     ! A_cols(idof) = coef%dof%dof(i,l,k,e)
-                     ! idof = idof + 1
+                     A_vals(idof) = G22(i,j,k,e) * D(j,l)
+                     A_rows(idof) = coef%dof%dof(i,j,k,e)
+                     A_cols(idof) = coef%dof%dof(i,l,k,e)
+                     idof = idof + 1
                      ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,l,k,e)) = D(j,l) ! TODO: this looks right
                      tmp = tmp + D(j,l) * u(i,l,k,e)
                   end do
-                  wus(i,j,k) = tmp
-               end do
-            end do
-         end do
+                  us(i,j,k) =  G22(i,j,k,e) * tmp
 
-         ! (D_gamma u)
-         do k = 1, lx
-            do j = 1, lx
-               do i = 1, lx
                   tmp = 0.0_rp
                   do l = 1, lx
-                     ! A_vals(idof) = D(k,l)
-                     ! A_rows(idof) = coef%dof%dof(i,j,k,e)
-                     ! A_cols(idof) = coef%dof%dof(i,j,l,e)
-                     ! idof = idof + 1
+                     A_vals(idof) = G33(i,j,k,e) * D(k,l)
+                     A_rows(idof) = coef%dof%dof(i,j,k,e)
+                     A_cols(idof) = coef%dof%dof(i,j,l,e)
+                     idof = idof + 1
                      ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,l,e)) = D(k,l) ! TODO: this looks right
                      tmp = tmp + D(k,l) * u(i,j,l,e)
                   end do
-                  wut(i,j,k) = tmp
+                  ut(i,j,k) =  G33(i,j,k,e) * tmp
                end do
             end do
          end do
 
          ! Compute the geometric mapping information and apply it (G (D u))
-         do k = 1, lx
-            do j = 1, lx
-               do i = 1, lx
-                  ur(i,j,k) = ( G11(i,j,k,e) * wur(i,j,k) &
-                              + G12(i,j,k,e) * wus(i,j,k) &
-                              + G13(i,j,k,e) * wut(i,j,k) )
-                  us(i,j,k) = ( G12(i,j,k,e) * wur(i,j,k) &
-                              + G22(i,j,k,e) * wus(i,j,k) &
-                              + G23(i,j,k,e) * wut(i,j,k) )
-                  ut(i,j,k) = ( G13(i,j,k,e) * wur(i,j,k) &
-                              + G23(i,j,k,e) * wus(i,j,k) &
-                              + G33(i,j,k,e) * wut(i,j,k) )
-               end do
-            end do
-         end do
+         ! do k = 1, lx
+         !    do j = 1, lx
+         !       do i = 1, lx
+         !          ur(i,j,k) = ( G11(i,j,k,e) * wur(i,j,k) &
+         !                      + G12(i,j,k,e) * wus(i,j,k) &
+         !                      + G13(i,j,k,e) * wut(i,j,k) )
+         !          us(i,j,k) = ( G12(i,j,k,e) * wur(i,j,k) &
+         !                      + G22(i,j,k,e) * wus(i,j,k) &
+         !                      + G23(i,j,k,e) * wut(i,j,k) )
+         !          ut(i,j,k) = ( G13(i,j,k,e) * wur(i,j,k) &
+         !                      + G23(i,j,k,e) * wus(i,j,k) &
+         !                      + G33(i,j,k,e) * wut(i,j,k) )
+         !       end do
+         !    end do
+         ! end do
 
          ! Compute the action of the derivative transpose operator (D^T (G (D u)))
          ! (D^T_xi u)
@@ -248,6 +226,8 @@ contains
          end do
 
       end do ! e = 1, n
+
+      write(*,*) 'idof ', idof
 
       ! Turn u and w into true vectors instead of the previous abominations
       ! write(*,*) 'Vectors'
