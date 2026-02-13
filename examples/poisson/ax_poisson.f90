@@ -47,6 +47,13 @@ module ax_poisson
      procedure, pass(this) :: compute_vector => ax_poisson_compute_vector
   end type ax_poisson_t
   real(kind=rp), allocatable :: A_matrix(:,:)
+  ! (i,j,val) format for the matrix
+  ! NOTE: there may be multiple entries for the same i,j.
+  ! in such a case they should be summed together (think of neighbor contributions)
+  integer(kind=i8), allocatable :: A_rows(:)
+  integer(kind=i8), allocatable :: A_cols(:)
+  real(kind=rp), allocatable :: A_vals(:)
+  
 
 contains
 
@@ -64,7 +71,7 @@ contains
     real(kind=rp) :: wut(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: tmp
     real(kind=rp), allocatable :: u_vec(:), w_vec(:)
-    integer :: e, i, j, k, l, num_dofs, irow, icol
+    integer :: e, i, j, k, l, num_dofs, irow, icol, idof, nnz
 
     ! @todo don't assume lx = ly = lz
     ! build a matrix
@@ -81,9 +88,6 @@ contains
       ! This is the matrix-based implementation of a matrix-free operator
       ! On the first call, it builds the matrix before computing the matvec
       ! On subsequent calls, it only computes the matvec using that matrix
-      ! Dt G11 G12 G13 D = Dt * G11 * D + Dt * G12 * D + Dt * G13 * D
-      ! Dt G21 G22 G23 D = Dt * G21 * D + Dt * G22 * D + Dt * G23 * D
-      ! Dt G31 G32 G33 D = Dt * G31 * D + Dt * G32 * D + Dt * G33 * D
       if (.not. allocated(A_matrix)) then
          write(*,*)
          write(*,*) '------------------------------'
@@ -96,28 +100,32 @@ contains
          write(*,*) n
          write(*,*) 'Number of local DOFs'
          write(*,*) lx
+         write(*,*) 'DOF Size'
          write(*,*) coef%dof%size()
          ! write(*,*) coef%dof%dof
          write(*,*) 'Allocating matrix meow meow ^-^'
+         ! true number of dofs (number of rows/cols in A)
          num_dofs = int(glsum(coef%mult, coef%dof%size()), i8)
          allocate(A_matrix(num_dofs,num_dofs))
-         write(*,*) num_dofs
 
-         !do e = 1, n
-         !   do k = 1, lx
-         !      do j = 1, lx
-         !         do i = 1, lx
-         !            A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,k,e)) = 1.0_rp
-         !         end do
-         !      end do
-         !   end do
-         !end do
-         !do irow = 1, num_dofs
-         !   A_matrix(irow,irow) = 1.0_rp
-         !end do
+
+
+         ! storing the matrix in (i,j,val) format needs one entry per dof contribution
+         ! this means we will need elems
+         nnz = num_dofs*lx*lx*lx
+         write(*,*) 'nnz'
+         write(*,*) nnz
+         allocate(A_vals(num_dofs))
+         A_vals = 0.0_rp
+         allocate(A_rows(num_dofs))
+         allocate(A_cols(num_dofs))
+         A_rows = 0_i8
+         A_cols = 0_i8
+         idof = 1 ! fortran indexing
+         
       endif
 
-      A_matrix = 0.0_rp
+      ! TODO: probably a memory leak here
       allocate(u_vec(num_dofs))
       allocate(w_vec(num_dofs))
       u_vec = 0.0_rp
@@ -134,7 +142,11 @@ contains
                do i = 1, lx
                   tmp = 0.0_rp
                   do l = 1, lx
-                  ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(l,j,k,e)) = D(i,l) ! TODO: this looks right
+                     A_vals(idof) = D(i,l)
+                     A_rows(idof) = coef%dof%dof(i,l,k,e)
+                     A_cols(idof) = coef%dof%dof(l,j,k,e)
+                     idof = idof + 1
+                     ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(l,j,k,e)) = D(i,l) ! TODO: this looks right
                      tmp = tmp + D(i,l) * u(l,j,k,e)
                   end do
                   wur(i,j,k) = tmp
@@ -148,6 +160,10 @@ contains
                do i = 1, lx
                   tmp = 0.0_rp
                   do l = 1, lx
+                     A_vals(idof) = D(j,l)
+                     A_rows(idof) = coef%dof%dof(i,j,k,e)
+                     A_cols(idof) = coef%dof%dof(i,l,k,e)
+                     idof = idof + 1
                      ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,l,k,e)) = D(j,l) ! TODO: this looks right
                      tmp = tmp + D(j,l) * u(i,l,k,e)
                   end do
@@ -242,7 +258,7 @@ contains
          end do
       end do
 
-      ! Do the true matrix-vector multiplication
+      ! Do the true matrix-vector multiplication, sparse style
       write(*,*) 'Matvec'
       do irow = 1, num_dofs
          do icol = 1, num_dofs
