@@ -74,13 +74,15 @@ contains
       do e = 1, n
          ! Compute the action of the derivative operator (D u)
          ! (D_xi u)
-         do j = 1, lx * lx
-            do i = 1, lx
-               tmp = 0.0_rp
-               do l = 1, lx
-                  tmp = tmp + D(i,l) * u(l,j,1,e)
+         do k = 1, lx
+            do j = 1, lx
+               do i = 1, lx
+                  tmp = 0.0_rp
+                  do l = 1, lx
+                     tmp = tmp + D(i,l) * u(l,j,k,e)
+                  end do
+                  wur(i,j,k) = tmp
                end do
-               wur(i,j,1) = tmp
             end do
          end do
 
@@ -99,12 +101,14 @@ contains
 
          ! (D_gamma u)
          do k = 1, lx
-            do i = 1, lx*lx
-               tmp = 0.0_rp
-               do l = 1, lx
-                  tmp = tmp + D(k,l) * u(i,1,l,e)
+            do j = 1, lx
+               do i = 1, lx
+                  tmp = 0.0_rp
+                  do l = 1, lx
+                     tmp = tmp + D(k,l) * u(i,j,l,e)
+                  end do
+                  wut(i,j,k) = tmp
                end do
-               wut(i,1,k) = tmp
             end do
          end do
 
