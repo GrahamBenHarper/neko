@@ -106,7 +106,7 @@ contains
          write(*,*) 'Allocating matrix meow meow ^-^'
          ! true number of dofs (number of rows/cols in A)
          num_dofs = int(glsum(coef%mult, coef%dof%size()), i8)
-         allocate(A_matrix(num_dofs,num_dofs))
+         ! allocate(A_matrix(num_dofs,num_dofs))
 
 
 
@@ -126,10 +126,10 @@ contains
       endif
 
       ! TODO: probably a memory leak here
-      allocate(u_vec(num_dofs))
-      allocate(w_vec(num_dofs))
-      u_vec = 0.0_rp
-      w_vec = 0.0_rp
+      ! allocate(u_vec(num_dofs))
+      ! allocate(w_vec(num_dofs))
+      ! u_vec = 0.0_rp
+      ! w_vec = 0.0_rp
 
 
       ! Loop over mesh elements
@@ -250,25 +250,25 @@ contains
       end do ! e = 1, n
 
       ! Turn u and w into true vectors instead of the previous abominations
-      write(*,*) 'Vectors'
-      do e = 1, n
-         do i = 1, lx
-            do j = 1, lx
-               do k = 1, lx
-                  u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e) * coef%mult(i,j,k,e)
-                  w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e) * coef%mult(i,j,k,e)
-               end do
-            end do
-         end do
-      end do
+      ! write(*,*) 'Vectors'
+      ! do e = 1, n
+      !    do i = 1, lx
+      !       do j = 1, lx
+      !          do k = 1, lx
+      !             u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e) * coef%mult(i,j,k,e)
+      !             w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e) * coef%mult(i,j,k,e)
+      !          end do
+      !       end do
+      !    end do
+      ! end do
 
       ! Do the true matrix-vector multiplication, sparse style
-      write(*,*) 'Matvec'
-      do irow = 1, num_dofs
-         do icol = 1, num_dofs
-            w_vec(irow) = w_vec(irow) + A_matrix(irow,icol) * u_vec(icol)
-         end do
-      end do
+      ! write(*,*) 'Matvec'
+      ! do irow = 1, num_dofs
+      !    do icol = 1, num_dofs
+      !       w_vec(irow) = w_vec(irow) + A_matrix(irow,icol) * u_vec(icol)
+      !    end do
+      ! end do
 
     end associate
   end subroutine ax_poisson_compute
