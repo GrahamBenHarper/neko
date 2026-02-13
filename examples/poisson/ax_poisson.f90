@@ -109,16 +109,20 @@ contains
          end do
 
          ! Compute the geometric mapping information and apply it (G (D u))
-         do i = 1, lx*lx*lx
-            ur(i,1,1) = ( G11(i,1,1,e) * wur(i,1,1) &
-                        + G12(i,1,1,e) * wus(i,1,1) &
-                        + G13(i,1,1,e) * wut(i,1,1) )
-            us(i,1,1) = ( G12(i,1,1,e) * wur(i,1,1) &
-                        + G22(i,1,1,e) * wus(i,1,1) &
-                        + G23(i,1,1,e) * wut(i,1,1) )
-            ut(i,1,1) = ( G13(i,1,1,e) * wur(i,1,1) &
-                        + G23(i,1,1,e) * wus(i,1,1) &
-                        + G33(i,1,1,e) * wut(i,1,1) )
+         do k = 1, lx
+            do j = 1, lx
+               do i = 1, lx
+                  ur(i,j,k) = ( G11(i,j,k,e) * wur(i,j,k) &
+                              + G12(i,j,k,e) * wus(i,j,k) &
+                              + G13(i,j,k,e) * wut(i,j,k) )
+                  us(i,j,k) = ( G12(i,j,k,e) * wur(i,j,k) &
+                              + G22(i,j,k,e) * wus(i,j,k) &
+                              + G23(i,j,k,e) * wut(i,j,k) )
+                  ut(i,j,k) = ( G13(i,j,k,e) * wur(i,j,k) &
+                              + G23(i,j,k,e) * wus(i,j,k) &
+                              + G33(i,j,k,e) * wut(i,j,k) )
+               end do
+            end do
          end do
 
          ! Compute the action of the derivative transpose operator (D^T (G (D u)))
