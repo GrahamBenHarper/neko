@@ -70,7 +70,7 @@ contains
     real(kind=rp) :: wur(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: wus(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: wut(Xh%lx, Xh%lx, Xh%lx)
-    real(kind=rp) :: tmp
+    real(kind=rp) :: tmp, matvec_err
     integer :: e, i, j, k, l, num_dofs, irow, icol, idof, nnz
 
     ! @todo don't assume lx = ly = lz
@@ -121,7 +121,6 @@ contains
 
       ! Loop over mesh elements
       do e = 1, n
-         write(*,*) 'Loop index ', e
          ! Compute the action of the derivative operator (D u)
          ! TODO: this assumes the mesh is structured
          !       so it's missing Gij with i .ne. j
@@ -224,11 +223,15 @@ contains
       end do
 
       ! Do the true matrix-vector multiplication, (i,j,val) style
+      ! Note: this properly handles the case where a single (i,j) appears twice, effectively summing the (i,j) value twice
+      ! This is an error check, so we compute w - A*u to see if it's 0
       do i = 1, nnz
          irow = A_rows(i)
          icol = A_cols(i)
-         w_vec(irow) = w_vec(irow) + A_vals(i) * u_vec(icol)
+         w_vec(irow) = w_vec(irow) - A_vals(i) * u_vec(icol)
       end do
+      matvec_err = sum(abs(w_vec))
+      write(*,*) 'Matvec error ', matvec_err
 
     end associate
   end subroutine ax_poisson_compute
