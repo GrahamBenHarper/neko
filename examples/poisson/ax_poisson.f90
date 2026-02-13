@@ -128,7 +128,8 @@ contains
       do e = 1, n
          write(*,*) 'Loop index ', e
          ! Compute the action of the derivative operator (D u)
-         ! (D_xi u)
+         ! TODO: this assumes the mesh is structured
+         !       so it's missing Gij with i .ne. j
          do k = 1, lx
             do j = 1, lx
                do i = 1, lx
@@ -167,23 +168,6 @@ contains
                end do
             end do
          end do
-
-         ! Compute the geometric mapping information and apply it (G (D u))
-         ! do k = 1, lx
-         !    do j = 1, lx
-         !       do i = 1, lx
-         !          ur(i,j,k) = ( G11(i,j,k,e) * wur(i,j,k) &
-         !                      + G12(i,j,k,e) * wus(i,j,k) &
-         !                      + G13(i,j,k,e) * wut(i,j,k) )
-         !          us(i,j,k) = ( G12(i,j,k,e) * wur(i,j,k) &
-         !                      + G22(i,j,k,e) * wus(i,j,k) &
-         !                      + G23(i,j,k,e) * wut(i,j,k) )
-         !          ut(i,j,k) = ( G13(i,j,k,e) * wur(i,j,k) &
-         !                      + G23(i,j,k,e) * wus(i,j,k) &
-         !                      + G33(i,j,k,e) * wut(i,j,k) )
-         !       end do
-         !    end do
-         ! end do
 
          ! Compute the action of the derivative transpose operator (D^T (G (D u)))
          ! (D^T_xi u)
