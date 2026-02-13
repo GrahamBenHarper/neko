@@ -70,8 +70,8 @@ contains
     real(kind=rp) :: wur(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: wus(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: wut(Xh%lx, Xh%lx, Xh%lx)
-    real(kind=rp) :: tmp, matvec_err
-    integer :: e, i, j, k, l, num_dofs, irow, icol, idof, nnz
+    real(kind=rp) :: tmp, tmp2, matvec_err
+    integer :: e, i, j, k, l, s, num_dofs, irow, icol, idof, nnz
 
     ! @todo don't assume lx = ly = lz
     associate( D => Xh%dx, Dt => Xh%dxt, &
@@ -127,111 +127,124 @@ contains
          do k = 1, lx
             do j = 1, lx
                do i = 1, lx
-                  tmp = 0.0_rp
-                  do l = 1, lx
-                     A_vals(idof) = G11(i,j,k,e) * D(i,l)
-                     A_rows(idof) = coef%dof%dof(i,j,k,e)
-                     A_cols(idof) = coef%dof%dof(l,j,k,e)
-                     idof = idof + 1
-                     ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(l,j,k,e)) = D(i,l) ! TODO: this looks right
-                     tmp = tmp + D(i,l) * u(l,j,k,e)
-                  end do
-                  ur(i,j,k) = G11(i,j,k,e) * tmp
-                  
-                  tmp = 0.0_rp
-                  do l = 1, lx
-                     A_vals(idof) = G22(i,j,k,e) * D(j,l)
-                     A_rows(idof) = coef%dof%dof(i,j,k,e)
-                     A_cols(idof) = coef%dof%dof(i,l,k,e)
-                     idof = idof + 1
-                     ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,l,k,e)) = D(j,l) ! TODO: this looks right
-                     tmp = tmp + D(j,l) * u(i,l,k,e)
-                  end do
-                  us(i,j,k) =  G22(i,j,k,e) * tmp
 
                   tmp = 0.0_rp
                   do l = 1, lx
-                     A_vals(idof) = G33(i,j,k,e) * D(k,l)
-                     A_rows(idof) = coef%dof%dof(i,j,k,e)
-                     A_cols(idof) = coef%dof%dof(i,j,l,e)
-                     idof = idof + 1
-                     ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,l,e)) = D(k,l) ! TODO: this looks right
-                     tmp = tmp + D(k,l) * u(i,j,l,e)
+                     tmp2 = 0.0_rp
+                     do s = 1, lx
+                        ! A_vals(idof) = G11(i,j,k,e) * D(i,l)
+                        ! A_rows(idof) = coef%dof%dof(i,j,k,e)
+                        ! A_cols(idof) = coef%dof%dof(l,j,k,e)
+                        ! idof = idof + 1
+                        ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(l,j,k,e)) = D(i,l) ! TODO: this looks right
+                        tmp2 = tmp2 + Dt(i,l) * D(l,s) * u(s,j,k,e) * G11(s,j,k,e)
+                     end do
+                     tmp = tmp + tmp2
                   end do
-                  ut(i,j,k) =  G33(i,j,k,e) * tmp
+                  w(i,j,k,e) = tmp
+                  
+                  tmp = 0.0_rp
+                  do l = 1, lx
+                     tmp2 = 0.0_rp
+                     do s = 1, lx
+                        ! A_vals(idof) = G22(i,j,k,e) * D(j,l)
+                        ! A_rows(idof) = coef%dof%dof(i,j,k,e)
+                        ! A_cols(idof) = coef%dof%dof(i,l,k,e)
+                        ! idof = idof + 1
+                        ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,l,k,e)) = D(j,l) ! TODO: this looks right
+                        tmp2 = tmp2 + Dt(j,l) * D(l,s) * u(i,s,k,e) * G22(i,s,k,e)
+                     end do
+                     tmp = tmp + tmp2
+                  end do
+                  w(i,j,k,e) = w(i,j,k,e) + tmp
+
+                  tmp = 0.0_rp
+                  do l = 1, lx
+                     tmp2 = 0.0_rp
+                     do s = 1, lx
+                        ! A_vals(idof) = G33(i,j,k,e) * D(k,l)
+                        ! A_rows(idof) = coef%dof%dof(i,j,k,e)
+                        ! A_cols(idof) = coef%dof%dof(i,j,l,e)
+                        ! idof = idof + 1
+                        ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,l,e)) = D(k,l) ! TODO: this looks right
+                        tmp2 = tmp2 + Dt(k,l) * D(l,s) * u(i,j,s,e) * G33(i,j,s,e)
+                     end do
+                     tmp = tmp + tmp2
+                  end do
+                  w(i,j,k,e) = w(i,j,k,e) + tmp
                end do
             end do
          end do
 
          ! Compute the action of the derivative transpose operator (D^T (G (D u)))
          ! (D^T_xi u)
-         do k = 1, lx
-            do j = 1, lx
-               do i = 1, lx
-                  tmp = 0.0_rp
-                  do l = 1, lx
-                     tmp = tmp + Dt(i,l) * ur(l,j,k)
-                  end do
-                  w(i,j,k,e) = tmp
-               end do
-            end do
-         end do
+         ! do k = 1, lx
+         !    do j = 1, lx
+         !       do i = 1, lx
+         !          tmp = 0.0_rp
+         !          do l = 1, lx
+         !             tmp = tmp + Dt(i,l) * ur(l,j,k)
+         !          end do
+         !          w(i,j,k,e) = tmp
+         !       end do
+         !    end do
+         ! end do
 
-         ! (D^T_eta u)
-         do k = 1, lx
-            do j = 1, lx
-               do i = 1, lx
-                  tmp = 0.0_rp
-                  do l = 1, lx
-                     tmp = tmp + Dt(j,l) * us(i,l,k)
-                  end do
-                  w(i,j,k,e) = w(i,j,k,e) + tmp
-               end do
-            end do
-         end do
+         ! ! (D^T_eta u)
+         ! do k = 1, lx
+         !    do j = 1, lx
+         !       do i = 1, lx
+         !          tmp = 0.0_rp
+         !          do l = 1, lx
+         !             tmp = tmp + Dt(j,l) * us(i,l,k)
+         !          end do
+         !          w(i,j,k,e) = w(i,j,k,e) + tmp
+         !       end do
+         !    end do
+         ! end do
 
-         ! (D^T_gamma u)
-         do k = 1, lx
-            do j = 1, lx
-               do i = 1, lx
-                  tmp = 0.0_rp
-                  do l = 1, lx
-                     tmp = tmp + Dt(k,l) * ut(i,j,l)
-                  end do
-                  w(i,j,k,e) = w(i,j,k,e) + tmp
-               end do
-            end do
-         end do
+         ! ! (D^T_gamma u)
+         ! do k = 1, lx
+         !    do j = 1, lx
+         !       do i = 1, lx
+         !          tmp = 0.0_rp
+         !          do l = 1, lx
+         !             tmp = tmp + Dt(k,l) * ut(i,j,l)
+         !          end do
+         !          w(i,j,k,e) = w(i,j,k,e) + tmp
+         !       end do
+         !    end do
+         ! end do
 
       end do ! e = 1, n
 
-      write(*,*) 'idof ', idof
+      ! write(*,*) 'idof ', idof
 
-      u_vec = 0.0_rp
-      w_vec = 0.0_rp
+      ! u_vec = 0.0_rp
+      ! w_vec = 0.0_rp
 
-      ! Turn u and w into true vectors instead of the previous abominations
-      do e = 1, n
-         do i = 1, lx
-            do j = 1, lx
-               do k = 1, lx
-                  u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e) * coef%mult(i,j,k,e)
-                  w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e) * coef%mult(i,j,k,e)
-               end do
-            end do
-         end do
-      end do
+      ! ! Turn u and w into true vectors instead of the previous abominations
+      ! do e = 1, n
+      !    do i = 1, lx
+      !       do j = 1, lx
+      !          do k = 1, lx
+      !             u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e) * coef%mult(i,j,k,e)
+      !             w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e) * coef%mult(i,j,k,e)
+      !          end do
+      !       end do
+      !    end do
+      ! end do
 
-      ! Do the true matrix-vector multiplication, (i,j,val) style
-      ! Note: this properly handles the case where a single (i,j) appears twice, effectively summing the (i,j) value twice
-      ! This is an error check, so we compute w - A*u to see if it's 0
-      do i = 1, nnz
-         irow = A_rows(i)
-         icol = A_cols(i)
-         w_vec(irow) = w_vec(irow) - A_vals(i) * u_vec(icol)
-      end do
-      matvec_err = sum(abs(w_vec))
-      write(*,*) 'Matvec error ', matvec_err
+      ! ! Do the true matrix-vector multiplication, (i,j,val) style
+      ! ! Note: this properly handles the case where a single (i,j) appears twice, effectively summing the (i,j) value twice
+      ! ! This is an error check, so we compute w - A*u to see if it's 0
+      ! do i = 1, nnz
+      !    irow = A_rows(i)
+      !    icol = A_cols(i)
+      !    w_vec(irow) = w_vec(irow) - A_vals(i) * u_vec(icol)
+      ! end do
+      ! matvec_err = sum(abs(w_vec))
+      ! write(*,*) 'Matvec error ', matvec_err
 
     end associate
   end subroutine ax_poisson_compute
