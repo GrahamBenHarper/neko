@@ -131,13 +131,15 @@ contains
 
          ! Compute the action of the derivative transpose operator (D^T (G (D u)))
          ! (D^T_xi u)
-         do j = 1, lx*lx
-            do i = 1, lx
-               tmp = 0.0_rp
-               do l = 1, lx
-                  tmp = tmp + Dt(i,l) * ur(l,j,1)
+         do k = 1, lx
+            do j = 1, lx
+               do i = 1, lx
+                  tmp = 0.0_rp
+                  do l = 1, lx
+                     tmp = tmp + Dt(i,l) * ur(l,j,k)
+                  end do
+                  w(i,j,k,e) = tmp
                end do
-               w(i,j,1,e) = tmp
             end do
          end do
 
@@ -156,12 +158,14 @@ contains
 
          ! (D^T_gamma u)
          do k = 1, lx
-            do i = 1, lx*lx
-               tmp = 0.0_rp
-               do l = 1, lx
-                  tmp = tmp + Dt(k,l) * ut(i,1,l)
+            do j = 1, lx
+               do i = 1, lx
+                  tmp = 0.0_rp
+                  do l = 1, lx
+                     tmp = tmp + Dt(k,l) * ut(i,j,l)
+                  end do
+                  w(i,j,k,e) = w(i,j,k,e) + tmp
                end do
-               w(i,1,k,e) = w(i,1,k,e) + tmp
             end do
          end do
 
