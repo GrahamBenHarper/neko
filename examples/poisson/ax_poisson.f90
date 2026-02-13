@@ -143,7 +143,7 @@ contains
                   tmp = 0.0_rp
                   do l = 1, lx
                      A_vals(idof) = D(i,l)
-                     A_rows(idof) = coef%dof%dof(i,l,k,e)
+                     A_rows(idof) = coef%dof%dof(i,j,k,e)
                      A_cols(idof) = coef%dof%dof(l,j,k,e)
                      idof = idof + 1
                      ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(l,j,k,e)) = D(i,l) ! TODO: this looks right
@@ -178,6 +178,10 @@ contains
                do i = 1, lx
                   tmp = 0.0_rp
                   do l = 1, lx
+                     A_vals(idof) = D(k,l)
+                     A_rows(idof) = coef%dof%dof(i,j,k,e)
+                     A_cols(idof) = coef%dof%dof(i,j,l,e)
+                     idof = idof + 1
                      ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,l,e)) = D(k,l) ! TODO: this looks right
                      tmp = tmp + D(k,l) * u(i,j,l,e)
                   end do
