@@ -132,14 +132,14 @@ contains
                   do s = 1, lx
                      tmp2 = 0.0_rp
                      do l = 1, lx
-                        ! A_vals(idof) = G11(i,j,k,e) * D(i,l)
-                        ! A_rows(idof) = coef%dof%dof(i,j,k,e)
-                        ! A_cols(idof) = coef%dof%dof(l,j,k,e)
-                        ! idof = idof + 1
-                        ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(l,j,k,e)) = D(i,l) ! TODO: this looks right
                         tmp2 = tmp2 + Dt(i,l) * D(l,s)
                      end do
                      tmp = tmp + tmp2 * u(s,j,k,e) * G11(s,j,k,e)
+
+                     A_vals(idof) = tmp2 * G11(s,j,k,e)
+                     A_rows(idof) = coef%dof%dof(i,j,k,e)
+                     A_cols(idof) = coef%dof%dof(s,j,k,e)
+                     idof = idof + 1
                   end do
                   w(i,j,k,e) = tmp
                   
@@ -147,14 +147,14 @@ contains
                   do s = 1, lx
                      tmp2 = 0.0_rp
                      do l = 1, lx
-                        ! A_vals(idof) = G22(i,j,k,e) * D(j,l)
-                        ! A_rows(idof) = coef%dof%dof(i,j,k,e)
-                        ! A_cols(idof) = coef%dof%dof(i,l,k,e)
-                        ! idof = idof + 1
-                        ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,l,k,e)) = D(j,l) ! TODO: this looks right
                         tmp2 = tmp2 + Dt(j,l) * D(l,s)
                      end do
                      tmp = tmp + tmp2 * u(i,s,k,e) * G22(i,s,k,e)
+
+                     A_vals(idof) = tmp2 * G22(i,s,k,e)
+                     A_rows(idof) = coef%dof%dof(i,j,k,e)
+                     A_cols(idof) = coef%dof%dof(i,s,k,e)
+                     idof = idof + 1
                   end do
                   w(i,j,k,e) = w(i,j,k,e) + tmp
 
@@ -162,14 +162,14 @@ contains
                   do s = 1, lx
                      tmp2 = 0.0_rp
                      do l = 1, lx
-                        ! A_vals(idof) = G33(i,j,k,e) * D(k,l)
-                        ! A_rows(idof) = coef%dof%dof(i,j,k,e)
-                        ! A_cols(idof) = coef%dof%dof(i,j,l,e)
-                        ! idof = idof + 1
-                        ! A_matrix(coef%dof%dof(i,j,k,e),coef%dof%dof(i,j,l,e)) = D(k,l) ! TODO: this looks right
                         tmp2 = tmp2 + Dt(k,l) * D(l,s)
                      end do
                      tmp = tmp + tmp2 * u(i,j,s,e) * G33(i,j,s,e)
+
+                     A_vals(idof) = tmp2 * G33(i,j,s,e)
+                     A_rows(idof) = coef%dof%dof(i,j,k,e)
+                     A_cols(idof) = coef%dof%dof(i,j,s,e)
+                     idof = idof + 1
                   end do
                   w(i,j,k,e) = w(i,j,k,e) + tmp
                end do
@@ -177,7 +177,7 @@ contains
          end do
       end do ! e = 1, n
 
-      ! write(*,*) 'idof ', idof
+      write(*,*) 'idof ', idof
 
       ! u_vec = 0.0_rp
       ! w_vec = 0.0_rp
