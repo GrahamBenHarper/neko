@@ -53,6 +53,7 @@ module ax_poisson
   integer(kind=i8), allocatable :: A_rows(:)
   integer(kind=i8), allocatable :: A_cols(:)
   real(kind=rp), allocatable :: A_vals(:)
+  real(kind=rp), allocatable :: u_vec(:), w_vec(:)
   
 
 contains
@@ -70,7 +71,6 @@ contains
     real(kind=rp) :: wus(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: wut(Xh%lx, Xh%lx, Xh%lx)
     real(kind=rp) :: tmp
-    real(kind=rp), allocatable :: u_vec(:), w_vec(:)
     integer :: e, i, j, k, l, num_dofs, irow, icol, idof, nnz
 
     ! @todo don't assume lx = ly = lz
@@ -99,8 +99,6 @@ contains
          num_dofs = int(glsum(coef%mult, coef%dof%size()), i8)
          allocate(A_matrix(1,1))
 
-
-
          ! storing the matrix in (i,j,val) format needs one entry per dof contribution
          ! this means we will need elems
          nnz = n*lx*lx*lx*lx*3
@@ -113,16 +111,13 @@ contains
          A_rows = 0_i8
          A_cols = 0_i8
          idof = 1 ! fortran indexing
-         
+
+         ! allocate the u and w vectors
+         allocate(u_vec(num_dofs))
+         allocate(w_vec(num_dofs))
       endif
 
-      ! TODO: probably a memory leak here
-      ! allocate(u_vec(num_dofs))
-      ! allocate(w_vec(num_dofs))
-      ! u_vec = 0.0_rp
-      ! w_vec = 0.0_rp
       idof = 1
-
 
       ! Loop over mesh elements
       do e = 1, n
@@ -213,26 +208,27 @@ contains
 
       write(*,*) 'idof ', idof
 
-      ! Turn u and w into true vectors instead of the previous abominations
-      ! write(*,*) 'Vectors'
-      ! do e = 1, n
-      !    do i = 1, lx
-      !       do j = 1, lx
-      !          do k = 1, lx
-      !             u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e) * coef%mult(i,j,k,e)
-      !             w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e) * coef%mult(i,j,k,e)
-      !          end do
-      !       end do
-      !    end do
-      ! end do
+      u_vec = 0.0_rp
+      w_vec = 0.0_rp
 
-      ! Do the true matrix-vector multiplication, sparse style
-      ! write(*,*) 'Matvec'
-      ! do irow = 1, num_dofs
-      !    do icol = 1, num_dofs
-      !       w_vec(irow) = w_vec(irow) + A_matrix(irow,icol) * u_vec(icol)
-      !    end do
-      ! end do
+      ! Turn u and w into true vectors instead of the previous abominations
+      do e = 1, n
+         do i = 1, lx
+            do j = 1, lx
+               do k = 1, lx
+                  u_vec(coef%dof%dof(i,j,k,e)) = u_vec(coef%dof%dof(i,j,k,e)) + u(i,j,k,e) * coef%mult(i,j,k,e)
+                  w_vec(coef%dof%dof(i,j,k,e)) = w_vec(coef%dof%dof(i,j,k,e)) + w(i,j,k,e) * coef%mult(i,j,k,e)
+               end do
+            end do
+         end do
+      end do
+
+      ! Do the true matrix-vector multiplication, (i,j,val) style
+      do i = 1, nnz
+         irow = A_rows(i)
+         icol = A_cols(i)
+         w_vec(irow) = w_vec(irow) + A_vals(i) * u_vec(icol)
+      end do
 
     end associate
   end subroutine ax_poisson_compute
